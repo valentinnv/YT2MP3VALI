@@ -60,9 +60,13 @@ app.post('/api/video-info', async (req, res) => {
             return res.status(400).json({ error: 'URL is required' });
         }
 
+        // Log the entered YouTube URL
+        console.log('📺 YouTube URL entered:', url);
+
         // Basic YouTube URL validation
         const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)/;
         if (!youtubeRegex.test(url)) {
+            console.log('❌ Invalid YouTube URL format:', url);
             return res.status(400).json({ error: 'Invalid YouTube URL' });
         }
 
@@ -78,8 +82,15 @@ app.post('/api/video-info', async (req, res) => {
             ]
         });
 
+        const cleanedTitle = cleanTitle(info.title);
+        
+        // Log the video title
+        console.log('🎵 Video title:', cleanedTitle);
+        console.log('👤 Video author:', info.uploader || info.channel);
+        console.log('⏱️  Video duration:', info.duration ? `${Math.floor(info.duration / 60)}:${(info.duration % 60).toString().padStart(2, '0')}` : 'Unknown');
+
         res.json({
-            title: cleanTitle(info.title),
+            title: cleanedTitle,
             duration: info.duration,
             thumbnail: info.thumbnail,
             author: info.uploader || info.channel
@@ -99,9 +110,13 @@ app.post('/api/download', async (req, res) => {
             return res.status(400).json({ error: 'URL is required' });
         }
 
+        // Log the download request
+        console.log('⬇️  Download request for URL:', url);
+
         // Basic YouTube URL validation
         const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)/;
         if (!youtubeRegex.test(url)) {
+            console.log('❌ Invalid YouTube URL format for download:', url);
             return res.status(400).json({ error: 'Invalid YouTube URL' });
         }
 
@@ -114,6 +129,10 @@ app.post('/api/download', async (req, res) => {
 
         const title = sanitize(cleanTitle(info.title));
         const outputPath = path.join(downloadsDir, `${title}.mp3`);
+        
+        // Log the download details
+        console.log('🎯 Starting download for:', title);
+        console.log('📁 Output path:', outputPath);
 
         // Download and convert to MP3 with highest quality
         await youtubedl(url, {
@@ -133,8 +152,12 @@ app.post('/api/download', async (req, res) => {
 
         // Check if file exists
         if (!fs.existsSync(outputPath)) {
+            console.log('❌ Failed to create MP3 file for:', title);
             throw new Error('Failed to create MP3 file');
         }
+
+        console.log('✅ MP3 conversion completed successfully for:', title);
+        console.log('📊 File size:', Math.round(fs.statSync(outputPath).size / 1024 / 1024 * 100) / 100, 'MB');
 
         // Set response headers for file download
         res.setHeader('Content-Disposition', `attachment; filename="${title}.mp3"`);
@@ -147,6 +170,7 @@ app.post('/api/download', async (req, res) => {
 
         // Clean up file after streaming
         fileStream.on('end', () => {
+            console.log('🗑️  Cleaning up temporary file:', title);
             setTimeout(() => {
                 if (fs.existsSync(outputPath)) {
                     fs.unlinkSync(outputPath);

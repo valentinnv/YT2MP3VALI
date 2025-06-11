@@ -78,6 +78,9 @@ class YT2MP3Converter {
             return;
         }
 
+        // Log the URL being analyzed (client-side)
+        console.log('🔍 [CLIENT] Analyzing YouTube URL:', url);
+
         this.showLoading();
         this.analyzeBtn.disabled = true;
 
@@ -95,6 +98,13 @@ class YT2MP3Converter {
             if (!response.ok) {
                 throw new Error(data.error || 'Failed to analyze video');
             }
+
+            // Log the video info received (client-side)
+            console.log('📋 [CLIENT] Video info received:', {
+                title: data.title,
+                author: data.author,
+                duration: data.duration ? this.formatDuration(data.duration) : 'Unknown'
+            });
 
             this.displayVideoInfo(data);
         } catch (error) {
@@ -124,6 +134,9 @@ class YT2MP3Converter {
             return;
         }
 
+        // Log the download initiation (client-side)
+        console.log('💾 [CLIENT] Initiating MP3 download for URL:', url);
+
         this.downloadBtn.disabled = true;
         this.downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Converting...';
 
@@ -150,6 +163,9 @@ class YT2MP3Converter {
                     filename = matches[1];
                 }
             }
+
+            // Log successful download (client-side)
+            console.log('✅ [CLIENT] Download completed successfully. Filename:', filename);
 
             // Create blob and download
             const blob = await response.blob();
