@@ -5,6 +5,33 @@ const fs = require('fs');
 const youtubedl = require('youtube-dl-exec');
 const sanitize = require('sanitize-filename');
 
+// Function to remove emojis and special characters from titles
+function cleanTitle(title) {
+    if (!title) return '';
+    
+    // Remove emojis and special Unicode characters
+    const cleaned = title
+        // Remove emoji characters (various Unicode ranges)
+        .replace(/[\u{1F600}-\u{1F64F}]/gu, '') // Emoticons
+        .replace(/[\u{1F300}-\u{1F5FF}]/gu, '') // Miscellaneous Symbols and Pictographs
+        .replace(/[\u{1F680}-\u{1F6FF}]/gu, '') // Transport and Map Symbols
+        .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '') // Flags (iOS)
+        .replace(/[\u{2600}-\u{26FF}]/gu, '')   // Miscellaneous symbols
+        .replace(/[\u{2700}-\u{27BF}]/gu, '')   // Dingbats
+        .replace(/[\u{1F900}-\u{1F9FF}]/gu, '') // Supplemental Symbols and Pictographs
+        .replace(/[\u{1F018}-\u{1F270}]/gu, '') // Various symbols
+        .replace(/[\u{238C}-\u{2454}]/gu, '')   // Miscellaneous symbols
+        .replace(/[\u{20D0}-\u{20FF}]/gu, '')   // Combining Diacritical Marks for Symbols
+        // Remove other weird characters
+        .replace(/[^\w\s\-_\.(),!?'"]/g, '')     // Keep only word chars, spaces, and basic punctuation
+        // Clean up multiple spaces
+        .replace(/\s+/g, ' ')
+        // Trim whitespace
+        .trim();
+    
+    return cleaned || 'untitled';
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -52,7 +79,7 @@ app.post('/api/video-info', async (req, res) => {
         });
 
         res.json({
-            title: info.title,
+            title: cleanTitle(info.title),
             duration: info.duration,
             thumbnail: info.thumbnail,
             author: info.uploader || info.channel
@@ -85,7 +112,7 @@ app.post('/api/download', async (req, res) => {
             noWarnings: true,
         });
 
-        const title = sanitize(info.title);
+        const title = sanitize(cleanTitle(info.title));
         const outputPath = path.join(downloadsDir, `${title}.mp3`);
 
         // Download and convert to MP3 with highest quality
