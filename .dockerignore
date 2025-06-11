@@ -1,0 +1,11 @@
+node_modules
+downloads
+*.log
+.env
+.git
+.gitignore
+README.md
+Dockerfile
+.dockerignore
+nixpacks.toml
+.railway-ignore
