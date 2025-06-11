@@ -88,15 +88,16 @@ app.post('/api/download', async (req, res) => {
         const title = sanitize(info.title);
         const outputPath = path.join(downloadsDir, `${title}.mp3`);
 
-        // Download and convert to MP3
+        // Download and convert to MP3 with highest quality
         await youtubedl(url, {
             extractAudio: true,
             audioFormat: 'mp3',
-            audioQuality: '128K',
+            audioQuality: '0', // Best quality (0 = best, 9 = worst for MP3)
             output: outputPath,
             noCheckCertificates: true,
             noWarnings: true,
             preferFreeFormats: true,
+            format: 'bestaudio/best', // Get the best audio format available
             addHeader: [
                 'referer:youtube.com',
                 'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
