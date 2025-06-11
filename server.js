@@ -159,23 +159,68 @@ app.post('/api/download', async (req, res) => {
         console.log('✅ MP3 conversion completed successfully for:', title);
         console.log('📊 File size:', Math.round(fs.statSync(outputPath).size / 1024 / 1024 * 100) / 100, 'MB');
 
-        // Set response headers for file download
+        // Get file stats
+        const fileStats = fs.statSync(outputPath);
+        const fileSize = fileStats.size;
+
+        // Set enhanced headers for better mobile compatibility
         res.setHeader('Content-Disposition', `attachment; filename="${title}.mp3"`);
         res.setHeader('Content-Type', 'audio/mpeg');
-        res.setHeader('Content-Length', fs.statSync(outputPath).size);
+        res.setHeader('Content-Length', fileSize);
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        
+        // Add mobile-specific headers
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, Content-Length, Content-Type');
 
-        // Stream the file to response
-        const fileStream = fs.createReadStream(outputPath);
-        fileStream.pipe(res);
+        // Check for range requests (important for mobile browsers)
+        const range = req.headers.range;
+        if (range) {
+            const parts = range.replace(/bytes=/, "").split("-");
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+            const chunksize = (end - start) + 1;
 
-        // Clean up file after streaming
-        fileStream.on('end', () => {
-            console.log('🗑️  Cleaning up temporary file:', title);
-            setTimeout(() => {
-                if (fs.existsSync(outputPath)) {
-                    fs.unlinkSync(outputPath);
-                }
-            }, 1000);
+            res.status(206);
+            res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+            res.setHeader('Content-Length', chunksize);
+
+            const fileStream = fs.createReadStream(outputPath, { start, end });
+            fileStream.pipe(res);
+
+            fileStream.on('end', () => {
+                console.log('🗑️  Cleaning up temporary file after range request:', title);
+                setTimeout(() => {
+                    if (fs.existsSync(outputPath)) {
+                        fs.unlinkSync(outputPath);
+                    }
+                }, 1000);
+            });
+        } else {
+            // Normal full file download
+            const fileStream = fs.createReadStream(outputPath);
+            fileStream.pipe(res);
+
+            // Clean up file after streaming
+            fileStream.on('end', () => {
+                console.log('🗑️  Cleaning up temporary file:', title);
+                setTimeout(() => {
+                    if (fs.existsSync(outputPath)) {
+                        fs.unlinkSync(outputPath);
+                    }
+                }, 1000);
+            });
+        }
+
+        // Handle stream errors
+        res.on('error', (err) => {
+            console.error('Response stream error:', err);
+            if (fs.existsSync(outputPath)) {
+                fs.unlinkSync(outputPath);
+            }
         });
 
     } catch (error) {

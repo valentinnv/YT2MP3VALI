@@ -167,16 +167,12 @@ class YT2MP3Converter {
             // Log successful download (client-side)
             console.log('✅ [CLIENT] Download completed successfully. Filename:', filename);
 
-            // Create blob and download
-            const blob = await response.blob();
-            const downloadUrl = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(downloadUrl);
+            // Mobile-friendly download implementation
+            if (this.isMobile()) {
+                await this.handleMobileDownload(response, filename);
+            } else {
+                await this.handleDesktopDownload(response, filename);
+            }
 
             this.showSuccessMessage();
         } catch (error) {
@@ -186,6 +182,114 @@ class YT2MP3Converter {
             this.downloadBtn.disabled = false;
             this.downloadBtn.innerHTML = '<i class="fas fa-download"></i> Download MP3';
         }
+    }
+
+    isMobile() {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+               (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+    }
+
+    async handleMobileDownload(response, filename) {
+        // For mobile devices, use direct navigation to trigger download
+        const blob = await response.blob();
+        
+        try {
+            // Method 1: Try the native file system access API (for modern browsers)
+            if ('showSaveFilePicker' in window) {
+                const fileHandle = await window.showSaveFilePicker({
+                    suggestedName: filename,
+                    types: [{
+                        description: 'MP3 Audio files',
+                        accept: { 'audio/mpeg': ['.mp3'] }
+                    }]
+                });
+                const writable = await fileHandle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+                return;
+            }
+        } catch (e) {
+            console.log('File System Access API not available or cancelled');
+        }
+
+        try {
+            // Method 2: Try Web Share API for mobile sharing
+            if (navigator.share && navigator.canShare) {
+                const file = new File([blob], filename, { type: 'audio/mpeg' });
+                if (navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        files: [file],
+                        title: 'Download MP3',
+                        text: 'Your converted MP3 file'
+                    });
+                    return;
+                }
+            }
+        } catch (e) {
+            console.log('Web Share API not available or cancelled');
+        }
+
+        // Method 3: Fallback - create download link with user interaction
+        const downloadUrl = window.URL.createObjectURL(blob);
+        
+        // Create a more visible download button for mobile
+        const mobileDownloadDiv = document.createElement('div');
+        mobileDownloadDiv.className = 'mobile-download-prompt';
+        mobileDownloadDiv.innerHTML = `
+            <div style="
+                background: #007bff;
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin: 10px 0;
+                text-align: center;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            ">
+                <p style="margin: 0 0 10px 0; font-weight: bold;">🎵 Your MP3 is ready!</p>
+                <a href="${downloadUrl}"
+                   download="${filename}"
+                   style="
+                       background: #28a745;
+                       color: white;
+                       padding: 12px 24px;
+                       text-decoration: none;
+                       border-radius: 6px;
+                       display: inline-block;
+                       font-weight: bold;
+                       touch-action: manipulation;
+                   "
+                   onclick="this.parentElement.parentElement.remove();">
+                    📱 Tap to Download ${filename}
+                </a>
+                <p style="margin: 10px 0 0 0; font-size: 12px; opacity: 0.9;">
+                    Tap the button above to download your file
+                </p>
+            </div>
+        `;
+
+        this.videoInfo.appendChild(mobileDownloadDiv);
+
+        // Auto-remove after 30 seconds
+        setTimeout(() => {
+            if (mobileDownloadDiv.parentNode) {
+                mobileDownloadDiv.parentNode.removeChild(mobileDownloadDiv);
+                window.URL.revokeObjectURL(downloadUrl);
+            }
+        }, 30000);
+    }
+
+    async handleDesktopDownload(response, filename) {
+        // Standard desktop download method
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(downloadUrl);
     }
 
     showSuccessMessage() {
