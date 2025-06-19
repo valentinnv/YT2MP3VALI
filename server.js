@@ -65,19 +65,11 @@ app.post('/api/video-info', async (req, res) => {
 
         // Function to attempt video info retrieval with different configurations
         async function attemptVideoInfo(url, retryCount = 0) {
-                    const browsers = ['chrome', 'firefox', 'edge', 'safari'];
                     try {
-                        const options = await getYoutubeDLOptions(retryCount);
-                        
-                        // Try with cookies from browser first
-                        if (retryCount < browsers.length) {
-                            options.cookiesFromBrowser = browsers[retryCount];
-                            console.log(`Attempting with ${browsers[retryCount]} cookies...`);
-                        }
-                        
+                        const options = getYoutubeDLOptions(retryCount);
                         return await youtubedl(url, options);
                     } catch (error) {
-                        if (retryCount < Math.max(3, browsers.length)) {
+                        if (retryCount < 3) {
                             console.log(`Attempt ${retryCount + 1} failed, retrying...`);
                             return attemptVideoInfo(url, retryCount + 1);
                         }
@@ -87,13 +79,6 @@ app.post('/api/video-info', async (req, res) => {
 
         // Function to get different configurations for each retry
         function getYoutubeDLOptions(retryCount) {
-            const userAgents = [
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2.1 Safari/605.1.15',
-                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edge/120.0.0.0'
-            ];
-
             const baseOptions = {
                 dumpSingleJson: true,
                 noCheckCertificates: true,
@@ -101,26 +86,26 @@ app.post('/api/video-info', async (req, res) => {
                 preferFreeFormats: true,
                 addHeader: [
                     'referer:youtube.com',
-                    `user-agent:${userAgents[retryCount % userAgents.length]}`,
+                    'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                     'accept-language:en-US,en;q=0.9',
                     'sec-fetch-dest:document',
                     'sec-fetch-mode:navigate',
                     'sec-fetch-site:none',
                     'sec-fetch-user:?1',
-                    'accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+                    'accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'cookie:CONSENT=YES+; SOCS=CAISEwgDEgk0ODE4MjkyMzEaAmVuIAEaBgiA5Li6BQ; GPS=1; VISITOR_INFO1_LIVE=true'
                 ]
             };
 
-            // Additional options based on retry count
+            // Additional anti-bot headers based on retry count
             switch (retryCount) {
                 case 1:
                     baseOptions.addHeader.push('upgrade-insecure-requests:1');
-                    break;
-                case 2:
                     baseOptions.addHeader.push('x-client-data:CJW2yQEIpLbJAQipncoBCMKcygEIkqHLAQj6uM0BCIWgzgEIgKHOAQ==');
                     break;
-                case 3:
-                    baseOptions.addHeader.push('cookie:CONSENT=YES+');
+                case 2:
+                    baseOptions.addHeader.push('x-youtube-client-name:1');
+                    baseOptions.addHeader.push('x-youtube-client-version:2.20240214');
                     break;
             }
 
@@ -161,9 +146,6 @@ app.post('/api/video-info', async (req, res) => {
                 'accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
             ]
         };
-
-        // Always try with Chrome cookies first
-        options.cookiesFromBrowser = 'chrome';
 
         const info = await youtubedl(url, options);
 
@@ -233,7 +215,6 @@ app.post('/api/download', async (req, res) => {
         // Download and convert to MP3 with highest quality
         // Function to attempt download with different configurations
         async function attemptDownload(url, outputPath, retryCount = 0) {
-            const browsers = ['chrome', 'firefox', 'edge', 'safari'];
             try {
                 const options = getYoutubeDLOptions(retryCount);
                 // Add download-specific options
@@ -243,15 +224,9 @@ app.post('/api/download', async (req, res) => {
                 options.output = outputPath;
                 options.format = 'bestaudio/best';
                 
-                // Try with cookies from browser first
-                if (retryCount < browsers.length) {
-                    options.cookiesFromBrowser = browsers[retryCount];
-                    console.log(`Attempting download with ${browsers[retryCount]} cookies...`);
-                }
-                
                 await youtubedl(url, options);
             } catch (error) {
-                if (retryCount < Math.max(3, browsers.length)) {
+                if (retryCount < 3) {
                     console.log(`Download attempt ${retryCount + 1} failed, retrying...`);
                     await attemptDownload(url, outputPath, retryCount + 1);
                 } else {
