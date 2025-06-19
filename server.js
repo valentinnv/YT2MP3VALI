@@ -4,6 +4,22 @@ const path = require('path');
 const fs = require('fs');
 const youtubedl = require('youtube-dl-exec');
 const sanitize = require('sanitize-filename');
+const os = require('os');
+
+// Function to create a temporary cookies file
+function createCookiesFile() {
+    const cookiesContent = [
+        '# Netscape HTTP Cookie File',
+        '.youtube.com\tTRUE\t/\tFALSE\t2147483647\tCONSENT\tYES+cb.20240214-14-p0.en+FX+321',
+        '.youtube.com\tTRUE\t/\tFALSE\t2147483647\tSOCS\tCAISEwgDEgk0ODE4MjkyMzEaAmVuIAEaBgiA5Li6BQ',
+        '.youtube.com\tTRUE\t/\tFALSE\t2147483647\tVISITOR_INFO1_LIVE\t4VsQ1tGe5Hw',
+        '.youtube.com\tTRUE\t/\tFALSE\t2147483647\tLOGIN_INFO\ttrue'
+    ].join('\n');
+
+    const cookiesPath = path.join(os.tmpdir(), 'youtube-cookies.txt');
+    fs.writeFileSync(cookiesPath, cookiesContent);
+    return cookiesPath;
+}
 
 // Function to remove emojis and special characters from titles
 function cleanTitle(title) {
@@ -79,11 +95,14 @@ app.post('/api/video-info', async (req, res) => {
 
         // Function to get different configurations for each retry
         function getYoutubeDLOptions(retryCount) {
+            const cookiesPath = createCookiesFile();
+            
             const baseOptions = {
                 dumpSingleJson: true,
                 noCheckCertificates: true,
                 noWarnings: true,
                 preferFreeFormats: true,
+                cookies: cookiesPath,
                 addHeader: [
                     'referer:youtube.com',
                     'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -93,21 +112,11 @@ app.post('/api/video-info', async (req, res) => {
                     'sec-fetch-site:none',
                     'sec-fetch-user:?1',
                     'accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                    'cookie:CONSENT=YES+; SOCS=CAISEwgDEgk0ODE4MjkyMzEaAmVuIAEaBgiA5Li6BQ; GPS=1; VISITOR_INFO1_LIVE=true'
+                    'upgrade-insecure-requests:1',
+                    'x-youtube-client-name:1',
+                    'x-youtube-client-version:2.20240214'
                 ]
             };
-
-            // Additional anti-bot headers based on retry count
-            switch (retryCount) {
-                case 1:
-                    baseOptions.addHeader.push('upgrade-insecure-requests:1');
-                    baseOptions.addHeader.push('x-client-data:CJW2yQEIpLbJAQipncoBCMKcygEIkqHLAQj6uM0BCIWgzgEIgKHOAQ==');
-                    break;
-                case 2:
-                    baseOptions.addHeader.push('x-youtube-client-name:1');
-                    baseOptions.addHeader.push('x-youtube-client-version:2.20240214');
-                    break;
-            }
 
             return baseOptions;
         }
