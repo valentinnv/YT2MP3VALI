@@ -1,0 +1,9 @@
+{
+	"appId": "com.yt2mp3.app",
+	"appName": "YT2MP3Converter",
+	"webDir": "public",
+	"server": {
+		"androidScheme": "https"
+	},
+	"android": {}
+}

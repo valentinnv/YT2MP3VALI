@@ -1,0 +1,7 @@
+#Thu Jun 19 01:34:07 EEST 2025
+base.0=C\:\\YT2MP3VALI\\android\\app\\build\\intermediates\\dex\\release\\mergeDexRelease\\classes.dex
+base.1=C\:\\YT2MP3VALI\\android\\app\\build\\intermediates\\global_synthetics_dex\\release\\mergeReleaseGlobalSynthetics\\classes.dex
+path.0=classes.dex
+path.1=classes.dex
+renamed.0=classes.dex
+renamed.1=classes2.dex

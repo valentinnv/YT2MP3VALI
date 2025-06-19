@@ -76,6 +76,7 @@ app.post('/api/video-info', async (req, res) => {
             noCheckCertificates: true,
             noWarnings: true,
             preferFreeFormats: true,
+            cookiesFromBrowser: 'chrome', // Use cookies from Chrome browser
             addHeader: [
                 'referer:youtube.com',
                 'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -143,6 +144,7 @@ app.post('/api/download', async (req, res) => {
             noCheckCertificates: true,
             noWarnings: true,
             preferFreeFormats: true,
+            cookiesFromBrowser: 'chrome', // Use cookies from Chrome browser
             format: 'bestaudio/best', // Get the best audio format available
             addHeader: [
                 'referer:youtube.com',

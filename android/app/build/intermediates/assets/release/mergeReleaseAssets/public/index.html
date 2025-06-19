@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vali's YT2MP3 Converter</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <i class="fab fa-youtube"></i>
+                <span>Vali's YT2MP3 Converter</span>
+            </div>
+            <p class="tagline">Convert YouTube videos to MP3 with ease</p>
+        </header>
+
+        <main class="main">
+            <div class="converter-section">
+                <div class="input-group">
+                    <input 
+                        type="text" 
+                        id="urlInput" 
+                        placeholder="Paste YouTube URL here..."
+                        class="url-input"
+                    >
+                    <button id="analyzeBtn" class="btn btn-primary">
+                        <i class="fas fa-search"></i>
+                        Convert
+                    </button>
+                </div>
+
+                <div id="videoInfo" class="video-info hidden">
+                    <div class="video-preview">
+                        <img id="thumbnail" src="" alt="Video thumbnail" class="thumbnail">
+                        <div class="video-details">
+                            <h3 id="videoTitle" class="video-title"></h3>
+                            <p id="videoAuthor" class="video-author"></p>
+                            <p id="videoDuration" class="video-duration"></p>
+                        </div>
+                    </div>
+                    <button id="downloadBtn" class="btn btn-success">
+                        <i class="fas fa-download"></i>
+                        Download MP3
+                    </button>
+                </div>
+
+                <div id="loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <p class="loading-text">Processing your request...</p>
+                </div>
+
+                <div id="error" class="error hidden">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="errorMessage"></span>
+                </div>
+            </div>
+
+            <div class="features">
+                <div class="feature">
+                    <i class="fas fa-bolt"></i>
+                    <h3>Fast Conversion</h3>
+                    <p>Lightning-fast YouTube to MP3 conversion</p>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-music"></i>
+                    <h3>High Quality</h3>
+                    <p>Highest available MP3 audio quality</p>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-shield-alt"></i>
+                    <h3>Safe & Secure</h3>
+                    <p>No data stored, completely private</p>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2025 Vali's YT2MP3 Converter.</p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
