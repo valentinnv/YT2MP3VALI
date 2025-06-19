@@ -65,17 +65,25 @@ app.post('/api/video-info', async (req, res) => {
 
         // Function to attempt video info retrieval with different configurations
         async function attemptVideoInfo(url, retryCount = 0) {
-            try {
-                const options = await getYoutubeDLOptions(retryCount);
-                return await youtubedl(url, options);
-            } catch (error) {
-                if (retryCount < 3) {
-                    console.log(`Attempt ${retryCount + 1} failed, retrying...`);
-                    return attemptVideoInfo(url, retryCount + 1);
+                    const browsers = ['chrome', 'firefox', 'edge', 'safari'];
+                    try {
+                        const options = await getYoutubeDLOptions(retryCount);
+                        
+                        // Try with cookies from browser first
+                        if (retryCount < browsers.length) {
+                            options.cookiesFromBrowser = browsers[retryCount];
+                            console.log(`Attempting with ${browsers[retryCount]} cookies...`);
+                        }
+                        
+                        return await youtubedl(url, options);
+                    } catch (error) {
+                        if (retryCount < Math.max(3, browsers.length)) {
+                            console.log(`Attempt ${retryCount + 1} failed, retrying...`);
+                            return attemptVideoInfo(url, retryCount + 1);
+                        }
+                        throw error;
+                    }
                 }
-                throw error;
-            }
-        }
 
         // Function to get different configurations for each retry
         function getYoutubeDLOptions(retryCount) {
@@ -154,10 +162,8 @@ app.post('/api/video-info', async (req, res) => {
             ]
         };
 
-        // Try with cookies first if in development environment
-        if (process.env.NODE_ENV === 'development') {
-            options.cookiesFromBrowser = 'chrome';
-        }
+        // Always try with Chrome cookies first
+        options.cookiesFromBrowser = 'chrome';
 
         const info = await youtubedl(url, options);
 
@@ -200,7 +206,22 @@ app.post('/api/download', async (req, res) => {
         }
 
         // Get video info first to get the title
-        const info = await attemptVideoInfo(url);
+        const info = await youtubedl(url, {
+            dumpSingleJson: true,
+            noCheckCertificates: true,
+            noWarnings: true,
+            preferFreeFormats: true,
+            cookiesFromBrowser: 'chrome',
+            addHeader: [
+                'referer:youtube.com',
+                'accept-language:en-US,en;q=0.9',
+                'sec-fetch-dest:document',
+                'sec-fetch-mode:navigate',
+                'sec-fetch-site:none',
+                'sec-fetch-user:?1',
+                'accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+            ]
+        });
 
         const title = sanitize(cleanTitle(info.title));
         const outputPath = path.join(downloadsDir, `${title}.mp3`);
@@ -212,6 +233,7 @@ app.post('/api/download', async (req, res) => {
         // Download and convert to MP3 with highest quality
         // Function to attempt download with different configurations
         async function attemptDownload(url, outputPath, retryCount = 0) {
+            const browsers = ['chrome', 'firefox', 'edge', 'safari'];
             try {
                 const options = getYoutubeDLOptions(retryCount);
                 // Add download-specific options
@@ -221,9 +243,15 @@ app.post('/api/download', async (req, res) => {
                 options.output = outputPath;
                 options.format = 'bestaudio/best';
                 
+                // Try with cookies from browser first
+                if (retryCount < browsers.length) {
+                    options.cookiesFromBrowser = browsers[retryCount];
+                    console.log(`Attempting download with ${browsers[retryCount]} cookies...`);
+                }
+                
                 await youtubedl(url, options);
             } catch (error) {
-                if (retryCount < 3) {
+                if (retryCount < Math.max(3, browsers.length)) {
                     console.log(`Download attempt ${retryCount + 1} failed, retrying...`);
                     await attemptDownload(url, outputPath, retryCount + 1);
                 } else {
