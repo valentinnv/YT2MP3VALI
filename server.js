@@ -63,6 +63,62 @@ app.post('/api/video-info', async (req, res) => {
         // Log the entered YouTube URL
         console.log('📺 YouTube URL entered:', url);
 
+        // Function to attempt video info retrieval with different configurations
+        async function attemptVideoInfo(url, retryCount = 0) {
+            try {
+                const options = await getYoutubeDLOptions(retryCount);
+                return await youtubedl(url, options);
+            } catch (error) {
+                if (retryCount < 3) {
+                    console.log(`Attempt ${retryCount + 1} failed, retrying...`);
+                    return attemptVideoInfo(url, retryCount + 1);
+                }
+                throw error;
+            }
+        }
+
+        // Function to get different configurations for each retry
+        function getYoutubeDLOptions(retryCount) {
+            const userAgents = [
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2.1 Safari/605.1.15',
+                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edge/120.0.0.0'
+            ];
+
+            const baseOptions = {
+                dumpSingleJson: true,
+                noCheckCertificates: true,
+                noWarnings: true,
+                preferFreeFormats: true,
+                addHeader: [
+                    'referer:youtube.com',
+                    `user-agent:${userAgents[retryCount % userAgents.length]}`,
+                    'accept-language:en-US,en;q=0.9',
+                    'sec-fetch-dest:document',
+                    'sec-fetch-mode:navigate',
+                    'sec-fetch-site:none',
+                    'sec-fetch-user:?1',
+                    'accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+                ]
+            };
+
+            // Additional options based on retry count
+            switch (retryCount) {
+                case 1:
+                    baseOptions.addHeader.push('upgrade-insecure-requests:1');
+                    break;
+                case 2:
+                    baseOptions.addHeader.push('x-client-data:CJW2yQEIpLbJAQipncoBCMKcygEIkqHLAQj6uM0BCIWgzgEIgKHOAQ==');
+                    break;
+                case 3:
+                    baseOptions.addHeader.push('cookie:CONSENT=YES+');
+                    break;
+            }
+
+            return baseOptions;
+        }
+
         // Basic YouTube URL validation
         const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)/;
         if (!youtubeRegex.test(url)) {
@@ -71,17 +127,39 @@ app.post('/api/video-info', async (req, res) => {
         }
 
         // Get video info using youtube-dl-exec
-        const info = await youtubedl(url, {
+        // Define multiple user agents to rotate
+        const userAgents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2.1 Safari/605.1.15',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Edge/120.0.0.0'
+        ];
+        
+        const randomUserAgent = userAgents[Math.floor(Math.random() * userAgents.length)];
+        
+        const options = {
             dumpSingleJson: true,
             noCheckCertificates: true,
             noWarnings: true,
             preferFreeFormats: true,
-            cookiesFromBrowser: 'chrome', // Use cookies from Chrome browser
             addHeader: [
                 'referer:youtube.com',
-                'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                `user-agent:${randomUserAgent}`,
+                'accept-language:en-US,en;q=0.9',
+                'sec-fetch-dest:document',
+                'sec-fetch-mode:navigate',
+                'sec-fetch-site:none',
+                'sec-fetch-user:?1',
+                'accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
             ]
-        });
+        };
+
+        // Try with cookies first if in development environment
+        if (process.env.NODE_ENV === 'development') {
+            options.cookiesFromBrowser = 'chrome';
+        }
+
+        const info = await youtubedl(url, options);
 
         const cleanedTitle = cleanTitle(info.title);
         
@@ -122,11 +200,7 @@ app.post('/api/download', async (req, res) => {
         }
 
         // Get video info first to get the title
-        const info = await youtubedl(url, {
-            dumpSingleJson: true,
-            noCheckCertificates: true,
-            noWarnings: true,
-        });
+        const info = await attemptVideoInfo(url);
 
         const title = sanitize(cleanTitle(info.title));
         const outputPath = path.join(downloadsDir, `${title}.mp3`);
@@ -136,21 +210,30 @@ app.post('/api/download', async (req, res) => {
         console.log('📁 Output path:', outputPath);
 
         // Download and convert to MP3 with highest quality
-        await youtubedl(url, {
-            extractAudio: true,
-            audioFormat: 'mp3',
-            audioQuality: '0', // Best quality (0 = best, 9 = worst for MP3)
-            output: outputPath,
-            noCheckCertificates: true,
-            noWarnings: true,
-            preferFreeFormats: true,
-            cookiesFromBrowser: 'chrome', // Use cookies from Chrome browser
-            format: 'bestaudio/best', // Get the best audio format available
-            addHeader: [
-                'referer:youtube.com',
-                'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            ]
-        });
+        // Function to attempt download with different configurations
+        async function attemptDownload(url, outputPath, retryCount = 0) {
+            try {
+                const options = getYoutubeDLOptions(retryCount);
+                // Add download-specific options
+                options.extractAudio = true;
+                options.audioFormat = 'mp3';
+                options.audioQuality = '0';
+                options.output = outputPath;
+                options.format = 'bestaudio/best';
+                
+                await youtubedl(url, options);
+            } catch (error) {
+                if (retryCount < 3) {
+                    console.log(`Download attempt ${retryCount + 1} failed, retrying...`);
+                    await attemptDownload(url, outputPath, retryCount + 1);
+                } else {
+                    throw error;
+                }
+            }
+        }
+
+        // Attempt download with retry mechanism
+        await attemptDownload(url, outputPath);
 
         // Check if file exists
         if (!fs.existsSync(outputPath)) {
